@@ -64,16 +64,25 @@ pipeline {
   	}
     }
 
-      stage('Sonarqube Analysis - SAST') {
-  	    steps {
-    	    withSonarQubeEnv('SonarQube') {
-            sh "mvn sonar:sonar \
-              -Dsonar.projectKey=maven-jenkins-pipeline \
-              -Dsonar.host.url=http://localhost:9000"
-             
-         	}
-  	}
-    }
+      stage('SonarQube - SAST') {
+     	 
+       	steps {
+   		catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+     	withSonarQubeEnv('SonarQube') {
+
+
+        	sh "mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=sonarqubekilian \
+            -Dsonar.projectName='sonarqubekilian' \
+            -Dsonar.host.url=http://mytpm.eastus.cloudapp.azure.com:9112 \
+            -Dsonar.token=sqp_a6c603c1bece854d0d587503787ee5c1fe879546"
+         }
+ 
+   		}
+   	}
+     	 
+ 
+ 	}
 
       stage('Vulnerability Scan - Docker') {
         steps {
