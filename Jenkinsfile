@@ -64,17 +64,16 @@ pipeline {
   	}
     }
 
-    
-      stage('SCM') {
-        checkout scm
-          }
-        stage('SonarQube Analysis') {
-          def mvn = tool 'sonarqubekilian';
-            withSonarQubeEnv() {
-              sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=sonarqubekilian -Dsonar.projectName='sonarqubekilian'"
-        }
-  }
-
+      stage('Sonarqube Analysis - SAST') {
+  	    steps {
+    	    withSonarQubeEnv('SonarQube') {
+            sh "mvn sonar:sonar \
+              -Dsonar.projectKey=maven-jenkins-pipeline \
+              -Dsonar.host.url=http://localhost:9000"
+             
+         	}
+  	}
+    }
 
       stage('Vulnerability Scan - Docker') {
         steps {
