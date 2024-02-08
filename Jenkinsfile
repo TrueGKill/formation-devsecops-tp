@@ -1,6 +1,15 @@
 pipeline {
   agent any
- 
+
+  environment {
+    deploymentName = "devsecops"
+    containerName = "devsecops-container"
+    serviceName = "devsecops-svc"
+    imageName = "kilian/devops-app:${GIT_COMMIT}"
+    applicationURL="http://mytpm.eastus.cloudapp.azure.com"
+    applicationURI="/increment/99"
+      }
+
   stages {
       stage('Build Artifact') {
             steps {
@@ -95,7 +104,47 @@ pipeline {
    			 }
    	 }
  }
+      stage('OWASP ZAP - DAST') {
+       steps {
+         withKubeConfig([credentialsId: 'kubeconfig']) {
+           sh 'sudo bash zap.sh'
+         }
+      
+      stage('Integration Tests - DEV') {
+           steps {
+             script {
+               try {
+                 withKubeConfig([credentialsId: 'kubeconfig']) {
+                   sh "bash integration-test.sh"
+                 }
+               } catch (e) {
+                 withKubeConfig([credentialsId: 'kubeconfig']) {
+                   sh "kubectl -n default rollout undo deploy ${deploymentName}"
+                 }
+                 throw e
+               }
+             }
+           }
+         }
+
+      stage('Vulnerability Scan - Kubernetes') {
+    steps {
+      parallel(
+        "OPA Scan": {
+          sh 'sudo docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy opa-k8s-security.rego k8s_deployment_service.yaml'
+        },
+        "Kubesec Scan": {
+          sh "sudo bash kubesec-scan.sh"
+        },
+        "Trivy Scan": {
+          sh "sudo bash trivy-k8s-scan.sh"
+        }
+      )
+    }
+  }
 
 
     }
+  }
+}
 }
